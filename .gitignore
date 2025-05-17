@@ -1,0 +1,13 @@
+venv
+config/.secrets.toml
+data/*
+*.c
+*.lib
+*.obj
+*.pyd
+*.exp
+__pycache__/
+build/
+.idea/
+.codebuddy
+/.pypirc

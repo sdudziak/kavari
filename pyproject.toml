@@ -1,0 +1,40 @@
+[project]
+name = "tpkm"
+version = "0.1.0"
+description = "Typed Python Kafka Manager - easy publish/listen to kafka topics embraced with strong types"
+authors = [{ name = "Szymon Dudziak", email = "sz.dudziak@gmail.com" }]
+license = { text = "Apache 2.0" }
+readme = "README.md"
+requires-python = ">=3.9"
+
+[tool.poetry]
+packages = [{ include = "tpkm", from = "src" }]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dependencies]
+confluent-kafka = "^2.10.0"
+dacite = "^1.9.2"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.2.0"
+black = "^25.1.0"
+isort = "^6.0.1"
+vulture = "^2.14"
+pytest = "^8.3.5"
+pytest-asyncio = "^0.26.0"
+pytest-mock = "^3.14.0"
+pytest-httpx = "^0.35.0"
+bandit = "^1.8.3"
+safety = "^3.5.1"
+semgrep = "^1.122.0"
+
+
+[tool.mypy]
+mypy_path = "./src"
+ignore_missing_imports = false
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
