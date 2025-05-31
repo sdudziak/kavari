@@ -1,0 +1,39 @@
+from logging import Logger
+
+from confluent_kafka import Producer, Consumer
+
+from .retry_policy import RetryPolicy
+from .kafka_manager import KafkaManager
+from .kafka_client import KafkaClient
+from .kafka_consumer_manager import KafkaConsumerManager
+
+
+def create(
+        bootstrap_servers: str,
+        group_id: str,
+        delivery_retry_policy: RetryPolicy,
+        publishing_retry_policy: RetryPolicy,
+        logger: Logger,
+        auto_commit: bool = False,
+        auto_offset_reset: str = "earliest",
+):
+    return KafkaManager(
+        kafka_client=KafkaClient(
+            Producer({"bootstrap.servers": bootstrap_servers}),
+            publishing_retry_policy,
+        ),
+        kafka_consumer=KafkaConsumerManager(
+            Consumer(
+                {
+                    "bootstrap.servers": bootstrap_servers,
+                    "group.id": group_id,
+                    "enable.auto.commit": auto_commit,
+                    "auto.offset.reset": auto_offset_reset,
+                }
+            ),
+            relaxed=True,
+            retry_policy=publishing_retry_policy,
+            logger=logger
+        ),
+        logger=logger,
+    )

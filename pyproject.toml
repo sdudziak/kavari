@@ -38,3 +38,6 @@ ignore_missing_imports = false
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.black]
+line-length = 140

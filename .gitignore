@@ -1,6 +1,7 @@
 venv
 config/.secrets.toml
 data/*
+dist/*
 *.c
 *.lib
 *.obj

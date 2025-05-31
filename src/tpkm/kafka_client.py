@@ -17,9 +17,10 @@ class KafkaClient:
         message: KafkaMessage,
         on_complete: Callable[[Message, Exception | None], None],
     ):
-        key = message.get_partition_key()
+        partition = message.get_partition_key()
         value = message.to_json()
         topic = message.topic
+        msg_type = message.__class__.__name__
 
         def delivery_callback(err, msg):
             if err:
@@ -28,7 +29,11 @@ class KafkaClient:
                 on_complete(msg, None)
 
         self.producer.produce(
-            topic=topic, key=key, value=value, callback=delivery_callback
+            topic=topic,
+            value=value,
+            partition=partition,
+            on_delivery=delivery_callback,
+            headers={"msg_type": msg_type},
         )
         self.producer.flush()
 

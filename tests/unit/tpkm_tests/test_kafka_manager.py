@@ -3,11 +3,11 @@ from typing import Any, Callable
 from unittest import TestCase
 from unittest.mock import MagicMock
 
+from tpkm.kafka_client import KafkaClient
+from tpkm.kafka_consumer_manager import KafkaConsumerManager
 from tpkm.kafka_manager import KafkaManager
 from tpkm.kafka_message import KafkaMessage
 from tpkm.kafka_message_consumer import KafkaMessageConsumer
-from tpkm.kafka_client import KafkaClient
-from tpkm.kafka_consumer_manager import KafkaConsumerManager
 
 
 class Flag:
@@ -15,7 +15,7 @@ class Flag:
         self.value = False
 
 
-class TestKafkaMessage(KafkaMessage):
+class SampleKafkaMessage(KafkaMessage):
     topic = "test_topic"
 
     def __init__(self, payload: str):
@@ -42,7 +42,7 @@ class TestKafkaManager(TestCase):
         self.logger.reset_mock()
 
     def test_sending_message(self):
-        msg: TestKafkaMessage = TestKafkaMessage("test_message")
+        msg: SampleKafkaMessage = SampleKafkaMessage("test_message")
         is_completed = Flag()
         dummy_callback = lambda _, __: setattr(is_completed, "value", True)
         self.sut.publish_message(msg, dummy_callback)

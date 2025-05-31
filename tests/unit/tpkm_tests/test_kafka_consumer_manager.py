@@ -1,39 +1,35 @@
 import json
+import sys
 import threading
 import time
 from dataclasses import asdict, dataclass
+from logging import Logger
 from unittest import TestCase
 from unittest.mock import MagicMock
 
 from confluent_kafka import Consumer, KafkaError, Message
 
-import sys
-print(sys.path)
-
-from tpkm import KafkaMessage
+from tpkm import FibonacciRetryPolicy, KafkaMessage
+from tpkm.kafka_consumer_manager import KafkaConsumerManager
 from tpkm.kafka_message_consumer import KafkaMessageConsumer
 from tpkm.kafka_message_handler import kafka_message_handler
-from tpkm.kafka_consumer_manager import KafkaConsumerManager
-from tpkm.module_globals import _registered_consumers
+from tpkm.module_globals import _message_type_registry
 
 
-@dataclass
-class TestKafkaMessage(KafkaMessage):
+class SampleKafkaMessage(KafkaMessage):
     topic = "test_topic"
     payload: str
 
     def get_partition_key(self) -> str:
         return "1"
 
-    def __init__(
-        self, payload: str, topic: str = None, _error: KafkaError | None = None
-    ):
+    def __init__(self, payload: str, topic: str = None, _error: KafkaError | None = None):
         super().__init__()
         self.payload = payload
 
 
-@kafka_message_handler(message_cls=TestKafkaMessage)
-class TestKafkaMessageConsumer(KafkaMessageConsumer):
+@kafka_message_handler(message_cls=SampleKafkaMessage)
+class SampleKafkaMessageConsumer(KafkaMessageConsumer):
 
     def __init__(self):
         self.received_message: str | None = None
@@ -48,24 +44,32 @@ class TestKafkaConsumerManager(TestCase):
 
     def setUp(self):
         self.consumer: MagicMock[Consumer] = MagicMock(spec=Consumer)
-        self.sut: KafkaConsumerManager = KafkaConsumerManager(self.consumer)
-        self.test_kafka_message_consumer: TestKafkaMessageConsumer = (
-            TestKafkaMessageConsumer()
+        self.sut: KafkaConsumerManager = KafkaConsumerManager(
+            self.consumer, FibonacciRetryPolicy(1), MagicMock(spec=Logger)
+        )
+        self.test_kafka_message_consumer: SampleKafkaMessageConsumer = (
+            SampleKafkaMessageConsumer()
         )
         self.sut.set_consumer_provider(lambda key: self.test_kafka_message_consumer)
+
+        _message_type_registry.register_handler_for_topic(SampleKafkaMessage.topic,
+                                                          SampleKafkaMessage,
+                                                          SampleKafkaMessageConsumer)
 
     def test_will_consume_message_from_specified_topic(self):
         # given
         kafka_msg: MagicMock[Message] = MagicMock(spec=Message)
-        msg = TestKafkaMessage("Say hello!")
-        kafka_msg.value.return_value = json.dumps(asdict(msg)).encode("utf-8")
+        msg = SampleKafkaMessage("Say hello!")
+        serialized_msg = json.dumps(asdict(msg)).encode("utf-8")
+        kafka_msg.value.return_value = serialized_msg
+        kafka_msg.headers.return_value = {"msg_type": msg.__class__.__name__}
         kafka_msg.error.return_value = None
         kafka_msg.topic.return_value = msg.topic
         self.consumer.poll.return_value = kafka_msg
 
         # when
         self.sut.start()
-        self.test_kafka_message_consumer.done.wait(timeout=2)
+        self.test_kafka_message_consumer.done.wait(timeout=0.2)
         self.sut.stop()
 
         self.assertEqual(msg.payload, self.test_kafka_message_consumer.received_message)
@@ -73,7 +77,7 @@ class TestKafkaConsumerManager(TestCase):
     def test_should_continue_when_poll_returns_none(self):
         self.consumer.poll.return_value = None
         self.sut.start()
-        time.sleep(0.2)
+        self.test_kafka_message_consumer.done.wait(timeout=0.2)
         self.sut.stop()
         self.assertIsNone(self.test_kafka_message_consumer.received_message)
 
@@ -85,7 +89,7 @@ class TestKafkaConsumerManager(TestCase):
         self.consumer.poll.return_value = msg
 
         self.sut.start()
-        time.sleep(0.2)
+        self.test_kafka_message_consumer.done.wait(timeout=0.2)
         self.sut.stop()
 
         self.assertIsNone(self.test_kafka_message_consumer.received_message)
@@ -98,7 +102,7 @@ class TestKafkaConsumerManager(TestCase):
         self.consumer.poll.return_value = msg
 
         self.sut.start()
-        time.sleep(0.2)
+        self.test_kafka_message_consumer.done.wait(timeout=0.2)
         self.sut.stop()
 
         self.assertIsNone(self.test_kafka_message_consumer.received_message)
@@ -108,21 +112,27 @@ class TestKafkaConsumerManager(TestCase):
             def handle(self, payload):
                 raise RuntimeError("fail")
 
-        _registered_consumers["test_topic"] = FailingHandler
-        msg = TestKafkaMessage("fail")
+        _message_type_registry.purge()
+        _message_type_registry.register_handler_for_topic(SampleKafkaMessage.topic,
+                                                          SampleKafkaMessage,
+                                                          FailingHandler)
+        self.sut.set_consumer_provider(lambda cls: FailingHandler())
+
+        msg = SampleKafkaMessage("fail")
         kafka_msg = MagicMock(spec=Message)
+        kafka_msg.headers.return_value = {"msg_type": SampleKafkaMessage.__name__}
         kafka_msg.topic.return_value = msg.topic
         kafka_msg.value.return_value = json.dumps(asdict(msg)).encode()
         kafka_msg.error.return_value = None
         self.consumer.poll.return_value = kafka_msg
 
-        self.sut.set_consumer_provider(lambda cls: FailingHandler())
         self.sut.start()
-        time.sleep(0.2)
+        self.test_kafka_message_consumer.done.wait(timeout=0.2)
         self.sut.stop()
 
-        _registered_consumers["test_topic"] = TestKafkaMessageConsumer
         self.consumer.commit.assert_not_called()
 
     def tearDown(self):
+        # clean up
+        _message_type_registry.purge()
         self.consumer.reset_mock()
