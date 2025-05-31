@@ -11,7 +11,7 @@ class KafkaMessage(ABC):
     payload: object  # to be precised in the inherited class
     _error: KafkaError | None
 
-    def __init__(self, payload: object = None, topic: str = None) -> None:
+    def __init__(self) -> None:
         self._error = None
 
     @abstractmethod

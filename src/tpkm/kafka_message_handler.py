@@ -1,8 +1,9 @@
 from typing import Type, get_type_hints
 
+from .exceptions import IncompatibleMessageTypeException
 from .kafka_message import KafkaMessage
 from .kafka_message_consumer import KafkaMessageConsumer
-from .module_globals import _message_type_registry
+from .message_type_registry import _message_type_registry
 
 
 def kafka_message_handler(message_cls: Type[KafkaMessage]):
@@ -26,17 +27,12 @@ def kafka_message_handler(message_cls: Type[KafkaMessage]):
 
         hints = get_type_hints(handle_method)
         if "message_data" not in hints:
-            raise ValueError(
-                f"{handler_cls.__name__}.handle must define argument 'message_data' with type annotation"
-            )
+            raise ValueError(f"{handler_cls.__name__}.handle must define argument 'message_data' with type annotation")
 
         expected_type = message_cls.__annotations__.get("payload")
         actual_type = hints["message_data"]
         if actual_type != expected_type:
-            raise TypeError(
-                f"{handler_cls.__name__}.handle expects '{actual_type.__name__}', "
-                f"but KafkaMessage carries '{expected_type.__name__}'"
-            )
+            raise IncompatibleMessageTypeException(topic, expected_type, actual_type)
 
         _message_type_registry.register_handler_for_topic(topic, message_cls, handler_cls)
         return handler_cls

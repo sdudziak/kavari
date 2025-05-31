@@ -32,9 +32,7 @@ class TestKafkaManager(TestCase):
         self.kafka_client = MagicMock(spec=KafkaClient)
         self.kafka_consumer_manager = MagicMock(spec=KafkaConsumerManager)
         self.logger = MagicMock(spec=Logger)
-        self.sut = KafkaManager(
-            self.kafka_client, self.kafka_consumer_manager, self.logger
-        )
+        self.sut = KafkaManager(self.kafka_client, self.kafka_consumer_manager, self.logger)
 
     def tearDown(self):
         self.kafka_client.reset_mock()
@@ -65,12 +63,8 @@ class TestKafkaManager(TestCase):
         self,
     ):
         # given
-        dummy_consumer_provider: Callable[[Any], KafkaMessageConsumer | None] = (
-            lambda _: None
-        )
+        dummy_consumer_provider: Callable[[Any], KafkaMessageConsumer | None] = lambda _: None
         # when
         self.sut.set_consumer_provider(dummy_consumer_provider)
         # then
-        self.kafka_consumer_manager.set_consumer_provider.assert_called_once_with(
-            dummy_consumer_provider
-        )
+        self.kafka_consumer_manager.set_consumer_provider.assert_called_once_with(dummy_consumer_provider)

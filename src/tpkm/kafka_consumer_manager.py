@@ -8,10 +8,10 @@ from confluent_kafka import Consumer, KafkaError, Message
 from dacite import from_dict
 
 from .exceptions import MalformedMessageException, MissingHandlerException, UnknownMessageTypeException
-from .retry_policy import RetryPolicy
 from .kafka_message import KafkaMessage
 from .kafka_message_consumer import KafkaMessageConsumer
-from .module_globals import _message_type_registry
+from .message_type_registry import _message_type_registry
+from .retry_policy import RetryPolicy
 
 
 class KafkaConsumerManager:
@@ -96,6 +96,7 @@ class KafkaConsumerManager:
 
                     try:
                         # Resolve handler from  DI container
+                        assert self.consumer_provider is not None  # nosec B101
                         handler = self.consumer_provider(handler_cls)
                         handler.handle(kafka_message.payload)
 
@@ -111,5 +112,6 @@ class KafkaConsumerManager:
     def stop(self) -> None:
         self.stop_event.set()
         self.consumer.unsubscribe()
+        assert self.threadHandle is not None  # nosec B101
         self.threadHandle.join()
         self.logger.info("Kafka: Consumer thread stopped.")

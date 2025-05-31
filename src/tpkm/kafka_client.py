@@ -1,4 +1,5 @@
 import time
+from logging import Logger
 from typing import Callable
 
 from confluent_kafka import Message, Producer
@@ -8,9 +9,11 @@ from .retry_policy import RetryPolicy
 
 
 class KafkaClient:
-    def __init__(self, producer: Producer, retry_policy: RetryPolicy):
-        self.producer = producer
-        self.retry_policy = retry_policy
+    def __init__(self, producer: Producer, retry_policy: RetryPolicy, logger: Logger, dlq_suffix: str = ".dlq"):
+        self.logger: Logger = logger
+        self.dlq_suffix: str = dlq_suffix
+        self.producer: Producer = producer
+        self.retry_policy: RetryPolicy = retry_policy
 
     def send(
         self,
@@ -54,16 +57,15 @@ class KafkaClient:
                     topic=message.topic,
                     key=key,
                     value=value,
-                    callback=lambda err, msg: (
-                        on_complete(msg, None) if not err else None
-                    ),
+                    callback=lambda err, msg: (on_complete(msg, None) if not err else None),
                 )
                 self.producer.flush()
                 return
-            except Exception:
+            except Exception as e:
+                self.logger.warning(f"Unable to send message {message} because of {e}")
                 continue
 
-        dlq_topic = f"{message.topic}{self.retry_policy.dlq_suffix}"
+        dlq_topic = f"{message.topic}{self.dlq_suffix}"
         self.producer.produce(
             topic=dlq_topic,
             key=key,

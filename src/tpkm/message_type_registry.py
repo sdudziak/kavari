@@ -1,5 +1,6 @@
-from typing import Type, Dict, List
 import importlib
+from typing import Any, Dict, List, Type
+
 from .kafka_message import KafkaMessage
 from .kafka_message_consumer import KafkaMessageConsumer
 
@@ -7,7 +8,7 @@ from .kafka_message_consumer import KafkaMessageConsumer
 class MessageTypeRegistryEntry:
     msg_type_path: str | None = None
     msg_type: type | None = None
-    _consumers: List[Type[KafkaMessageConsumer]] = {}
+    _consumers: List[Type[KafkaMessageConsumer]] = []
 
     def __init__(self, msg_type: Type[KafkaMessage], consumer_type: Type[KafkaMessageConsumer]):
         self.msg_type_path = f"{msg_type.__module__}.{msg_type.__name__}"
@@ -28,8 +29,11 @@ class MessageTypeRegistryEntry:
     @staticmethod
     def __load_msg_type(msg_type_path: str) -> type:
         module_path, class_name = msg_type_path.rsplit(".", 1)
-        module = importlib.import_module(module_path)
-        return getattr(module, class_name)
+        module = importlib.import_module(module_path)  # nosemgrep: non-literal-import - loading only child classes of KafkaMessage
+        msg_type: type = getattr(module, class_name)
+        if not issubclass(msg_type, KafkaMessage):
+            raise TypeError(f"{msg_type} is not a subclass of KafkaMessage")
+        return msg_type
 
 
 class MessageTypeRegistry:
@@ -75,7 +79,7 @@ class TopicMessageTypeRegistry:
             return None
         return self._registry[topic].get_message_type_from_name(msg_type_name)
 
-    def get_handlers(self, topic, msg_type) -> List[Type[KafkaMessage]] | None:
+    def get_handlers(self, topic, msg_type) -> List[Type[KafkaMessageConsumer[Any]]] | None:
         if self._registry.get(topic) is None:
             return None
         msg_type_name = msg_type.__name__

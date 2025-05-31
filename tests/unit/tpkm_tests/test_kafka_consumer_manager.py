@@ -13,7 +13,7 @@ from tpkm import FibonacciRetryPolicy, KafkaMessage
 from tpkm.kafka_consumer_manager import KafkaConsumerManager
 from tpkm.kafka_message_consumer import KafkaMessageConsumer
 from tpkm.kafka_message_handler import kafka_message_handler
-from tpkm.module_globals import _message_type_registry
+from tpkm.message_type_registry import _message_type_registry
 
 
 class SampleKafkaMessage(KafkaMessage):
@@ -44,17 +44,11 @@ class TestKafkaConsumerManager(TestCase):
 
     def setUp(self):
         self.consumer: MagicMock[Consumer] = MagicMock(spec=Consumer)
-        self.sut: KafkaConsumerManager = KafkaConsumerManager(
-            self.consumer, FibonacciRetryPolicy(1), MagicMock(spec=Logger)
-        )
-        self.test_kafka_message_consumer: SampleKafkaMessageConsumer = (
-            SampleKafkaMessageConsumer()
-        )
+        self.sut: KafkaConsumerManager = KafkaConsumerManager(self.consumer, FibonacciRetryPolicy(1), MagicMock(spec=Logger))
+        self.test_kafka_message_consumer: SampleKafkaMessageConsumer = SampleKafkaMessageConsumer()
         self.sut.set_consumer_provider(lambda key: self.test_kafka_message_consumer)
 
-        _message_type_registry.register_handler_for_topic(SampleKafkaMessage.topic,
-                                                          SampleKafkaMessage,
-                                                          SampleKafkaMessageConsumer)
+        _message_type_registry.register_handler_for_topic(SampleKafkaMessage.topic, SampleKafkaMessage, SampleKafkaMessageConsumer)
 
     def test_will_consume_message_from_specified_topic(self):
         # given
@@ -113,9 +107,7 @@ class TestKafkaConsumerManager(TestCase):
                 raise RuntimeError("fail")
 
         _message_type_registry.purge()
-        _message_type_registry.register_handler_for_topic(SampleKafkaMessage.topic,
-                                                          SampleKafkaMessage,
-                                                          FailingHandler)
+        _message_type_registry.register_handler_for_topic(SampleKafkaMessage.topic, SampleKafkaMessage, FailingHandler)
         self.sut.set_consumer_provider(lambda cls: FailingHandler())
 
         msg = SampleKafkaMessage("fail")

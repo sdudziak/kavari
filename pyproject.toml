@@ -30,11 +30,14 @@ pytest-httpx = "^0.35.0"
 bandit = "^1.8.3"
 safety = "^3.5.1"
 semgrep = "^1.122.0"
+mypy = "^1.16.0"
+detect-secrets = "^1.5.0"
 
 
 [tool.mypy]
 mypy_path = "./src"
-ignore_missing_imports = false
+ignore_missing_imports = true
+check_untyped_defs = true
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

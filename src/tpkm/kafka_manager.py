@@ -21,15 +21,13 @@ class KafkaManager:
         self.kafka_msg_consumer = kafka_consumer
         self.logger = logger
 
-    def set_consumer_provider(
-        self, consumer_provider: Callable[[Any], KafkaMessageConsumer]
-    ):
+    def set_consumer_provider(self, consumer_provider: Callable[[Any], KafkaMessageConsumer]):
         self.kafka_msg_consumer.set_consumer_provider(consumer_provider)
 
     def publish_message(
         self,
         message: KafkaMessage,
-        on_complete: Callable[[Message, Exception | None], None] | None,
+        on_complete: Callable[[Message, Exception | None], None] = lambda m, e: None,  # noqa: Vulture
     ) -> None:
         return self.kafka_client.send(message, on_complete)
 
