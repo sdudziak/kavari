@@ -53,30 +53,25 @@ To achieve full power of this lib, you need to configure it
 The example one, compatible with DI container:
 
 ```python
-class Container(containers.DeclarativeContainer):
+from kavari import create, FibonacciRetryPolicy, KafkaManager
+
+
+class Container(DeclarativeContainer):
     kafka_manager: Singleton[KafkaManager] = Singleton(
-        lambda: KafkaManager(
-            kafka_client=KafkaClient(
-                Producer({"bootstrap.servers": config.kafka_broker_url}),
-                FibonacciRetryPolicy(10),
-            ),
-            kafka_consumer=KafkaConsumerManager(
-                Consumer(
-                    {
-                        "bootstrap.servers": config.kafka_broker_url,
-                        "group.id": config.kafka_group_id,
-                        "enable.auto.commit": False,
-                        "auto.offset.reset": "earliest",
-                    }
-                )
-            ),
-            logger=logger,
+        lambda: create(
+            bootstrap_servers="bootstrap_location:2973",
+            group_id= "unique_group_identifier",
+            publishing_retry_policy= FibonacciRetryPolicy(max_attempts=10),
+            logger = logger,
+            auto_commit = False,
+            auto_offset_reset = "earliest"
         )
     )
 ```
 
 Then in the bootstrap of the project add (here, with the FastAPI):
 ```python
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # this part is called on application start
