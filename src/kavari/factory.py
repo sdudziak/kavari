@@ -8,7 +8,7 @@ from .kafka_manager import KafkaManager
 from .retry_policy import RetryPolicy
 
 
-def create(
+def kavari_create(
     bootstrap_servers: str,
     group_id: str,
     delivery_retry_policy: RetryPolicy,  # noqa: Vulture - this will be implemented later

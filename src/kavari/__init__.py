@@ -1,4 +1,4 @@
-from .factory import create
+from .factory import kavari_create
 from .fibonacci_retry_policy import FibonacciRetryPolicy
 from .kafka_client import KafkaClient
 from .kafka_consumer_manager import KafkaConsumerManager
@@ -16,5 +16,5 @@ __all__ = [
     "kafka_message_handler",
     "RetryPolicy",
     "FibonacciRetryPolicy",
-    "create",
+    "kavari_create",
 ]

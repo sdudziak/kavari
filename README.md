@@ -1,10 +1,10 @@
-from confluent_kafka import Message# tpkm: Typed Python Kafka Manager 
+Kavari: easy, automated Kafka publish/subscription with strong types
 ---
 
 This tool is to make usage of kafka super easy and safe, 
 utilizing best practices and power given by [`confluent_kafka`](https://github.com/confluentinc/confluent-kafka-python)
 
-### Publishing message
+## Publishing message
 
 Create a message type, that defines the payload (our strong typed message format)
 ```python
@@ -27,7 +27,7 @@ kafka_manager.publish_message(msg, lambda msg, ex:  print("Message published"))
 ```
 Easy? I hope so! Now let's consume this message
 
-### Consuming message
+## Consuming message
 
 Define the handler class 
 ```python
@@ -48,23 +48,23 @@ I hope you like the concept!
 
 To achieve full power of this lib, you need to configure it
 
-### Configuration
+## Configuration
 
 The example one, compatible with DI container:
 
 ```python
-from kavari import create, FibonacciRetryPolicy, KafkaManager
+from kavari import kavari_create, FibonacciRetryPolicy, KafkaManager
 
 
 class Container(DeclarativeContainer):
     kafka_manager: Singleton[KafkaManager] = Singleton(
-        lambda: create(
+        lambda: kavari_create(
             bootstrap_servers="bootstrap_location:2973",
-            group_id= "unique_group_identifier",
-            publishing_retry_policy= FibonacciRetryPolicy(max_attempts=10),
-            logger = logger,
-            auto_commit = False,
-            auto_offset_reset = "earliest"
+            group_id="unique_group_identifier",
+            publishing_retry_policy=FibonacciRetryPolicy(max_attempts=10),
+            logger=logger,
+            auto_commit=False,
+            auto_offset_reset="earliest"
         )
     )
 ```
@@ -86,3 +86,4 @@ async def lifespan(app: FastAPI):
     container.kafka_manager().stop_consumer_loop()
 ```
 
+---
