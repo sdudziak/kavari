@@ -3,11 +3,11 @@ from typing import Any, Callable
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from tpkm.kafka_client import KafkaClient
-from tpkm.kafka_consumer_manager import KafkaConsumerManager
-from tpkm.kafka_manager import KafkaManager
-from tpkm.kafka_message import KafkaMessage
-from tpkm.kafka_message_consumer import KafkaMessageConsumer
+from kavari.kafka_client import KafkaClient
+from kavari.kafka_consumer_manager import KafkaConsumerManager
+from kavari.kafka_manager import KafkaManager
+from kavari.kafka_message import KafkaMessage
+from kavari.kafka_message_consumer import KafkaMessageConsumer
 
 
 class Flag:

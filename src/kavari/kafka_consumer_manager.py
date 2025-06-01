@@ -37,7 +37,7 @@ class KafkaConsumerManager:
     def start(self):
         def run():
             self.consumer.subscribe(self.topics)
-            self.logger.info(f"[tpkm] Subscribed to kafka topics: {self.topics}")
+            self.logger.info(f"[kavari] Subscribed to kafka topics: {self.topics}")
             while not self.stop_event.is_set():
                 msg: Message = self.consumer.poll(1.0)
                 # sleep if the queue is empty to not overkill performance with nasty query rate

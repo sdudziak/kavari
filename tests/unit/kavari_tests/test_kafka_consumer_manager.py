@@ -9,11 +9,11 @@ from unittest.mock import MagicMock
 
 from confluent_kafka import Consumer, KafkaError, Message
 
-from tpkm import FibonacciRetryPolicy, KafkaMessage
-from tpkm.kafka_consumer_manager import KafkaConsumerManager
-from tpkm.kafka_message_consumer import KafkaMessageConsumer
-from tpkm.kafka_message_handler import kafka_message_handler
-from tpkm.message_type_registry import _message_type_registry
+from kavari import FibonacciRetryPolicy, KafkaMessage
+from kavari.kafka_consumer_manager import KafkaConsumerManager
+from kavari.kafka_message_consumer import KafkaMessageConsumer
+from kavari.kafka_message_handler import kafka_message_handler
+from kavari.message_type_registry import _message_type_registry
 
 
 class SampleKafkaMessage(KafkaMessage):
