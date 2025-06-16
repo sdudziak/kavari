@@ -3,12 +3,16 @@ name = "kavari"
 version = "0.2.0"
 description = "Typed Python Kafka Manager - easy publish/listen to kafka topics embraced with strong types"
 authors = [{ name = "Szymon Dudziak", email = " sdudziak@users.noreply.github.com" }]
-license = "Apache 2.0"
+license = { text = "Apache-2.0" }
+classifiers = [
+  "License :: OSI Approved :: Apache Software License"
+]
 readme = "README.md"
 requires-python = ">=3.9"
 
 [tool.poetry]
 packages = [{ include = "kavari", from = "src" }]
+license = "Apache-2.0"
 
 [build-system]
 requires = ["poetry-core"]
