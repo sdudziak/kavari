@@ -27,7 +27,7 @@ class KafkaManager:
     def publish_message(
         self,
         message: KafkaMessage,
-        on_complete: Callable[[Message, Exception | None], None] = lambda m, e: None,  # noqa: Vulture
+        on_complete: Callable[[Message, Any | str | Exception | None], None] = lambda m, e: None,  # noqa: Vulture
     ) -> None:
         return self.kafka_client.send(message, on_complete)
 
@@ -37,4 +37,5 @@ class KafkaManager:
 
     def stop_consumer_loop(self):
         self.logger.info("Stopping consumer loop")
+        self.kafka_client.stop()
         self.kafka_msg_consumer.stop()

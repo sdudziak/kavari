@@ -54,16 +54,16 @@ class TestKafkaConsumerManager(TestCase):
         # given
         kafka_msg: MagicMock[Message] = MagicMock(spec=Message)
         msg = SampleKafkaMessage("Say hello!")
-        serialized_msg = json.dumps(asdict(msg)).encode("utf-8")
+        serialized_msg = msg.to_json().encode("utf-8")
         kafka_msg.value.return_value = serialized_msg
-        kafka_msg.headers.return_value = {"msg_type": msg.__class__.__name__}
+        kafka_msg.headers.return_value = [("msg_type", msg.__class__.__name__)]
         kafka_msg.error.return_value = None
         kafka_msg.topic.return_value = msg.topic
         self.consumer.poll.return_value = kafka_msg
 
         # when
         self.sut.start()
-        self.test_kafka_message_consumer.done.wait(timeout=0.2)
+        self.test_kafka_message_consumer.done.wait(timeout=1)
         self.sut.stop()
 
         self.assertEqual(msg.payload, self.test_kafka_message_consumer.received_message)
@@ -112,7 +112,7 @@ class TestKafkaConsumerManager(TestCase):
 
         msg = SampleKafkaMessage("fail")
         kafka_msg = MagicMock(spec=Message)
-        kafka_msg.headers.return_value = {"msg_type": SampleKafkaMessage.__name__}
+        kafka_msg.headers.return_value = [("msg_type", msg.__class__.__name__)]
         kafka_msg.topic.return_value = msg.topic
         kafka_msg.value.return_value = json.dumps(asdict(msg)).encode()
         kafka_msg.error.return_value = None

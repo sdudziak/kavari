@@ -1,9 +1,9 @@
 [project]
 name = "kavari"
-version = "0.1.0"
+version = "0.1.1"
 description = "Typed Python Kafka Manager - easy publish/listen to kafka topics embraced with strong types"
 authors = [{ name = "Szymon Dudziak", email = " sdudziak@users.noreply.github.com" }]
-license = { text = "Apache 2.0" }
+license = "Apache 2.0"
 readme = "README.md"
 requires-python = ">=3.9"
 

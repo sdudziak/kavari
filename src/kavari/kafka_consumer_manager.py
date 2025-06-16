@@ -1,15 +1,13 @@
-import json
 import threading
 import time
 from logging import Logger
-from typing import Any, Callable, List, Type
+from typing import Any, Callable, List, Optional, Type
 
 from confluent_kafka import Consumer, KafkaError, Message
-from dacite import from_dict
 
 from .exceptions import MalformedMessageException, MissingHandlerException, UnknownMessageTypeException
-from .kafka_message import KafkaMessage
 from .kafka_message_consumer import KafkaMessageConsumer
+from .kafka_message_deserializer import KafkaMessageDeserializer
 from .message_type_registry import _message_type_registry
 from .retry_policy import RetryPolicy
 
@@ -25,21 +23,25 @@ class KafkaConsumerManager:
         self.topics: List[str] = _message_type_registry.get_topics()
         self.stop_event = threading.Event()
         self.consumer.subscribe(self.topics)
+        self.message_deserializer = KafkaMessageDeserializer()
 
-    @staticmethod
-    def _deserialize_message(raw_value: bytes, message_cls: type[KafkaMessage]) -> KafkaMessage:
-        payload_dict = json.loads(raw_value.decode("utf-8"))
-        return from_dict(data_class=message_cls, data=payload_dict)
+    def get_header_value(self, headers: List[tuple], key: str) -> Optional[str]:
+        """Retrieve the value of a header by key, or None if not found."""
+        header_dict = dict(headers)
+        value = header_dict.get(key)
+        return value if value is not None else None
 
     def set_consumer_provider(self, consumer_provider: Callable[[Any], KafkaMessageConsumer]):
         self.consumer_provider = consumer_provider
 
     def start(self):
+        self.consumer.subscribe(topics=self.topics)
+        print(f"[kavari] Subscribed to kafka topics: {self.topics}")
+
         def run():
-            self.consumer.subscribe(self.topics)
-            self.logger.info(f"[kavari] Subscribed to kafka topics: {self.topics}")
             while not self.stop_event.is_set():
                 msg: Message = self.consumer.poll(1.0)
+                self.logger.debug(f"[kavari] Poll result: {msg}")
                 # sleep if the queue is empty to not overkill performance with nasty query rate
                 if msg is None:
                     time.sleep(1)
@@ -50,24 +52,22 @@ class KafkaConsumerManager:
                     continue
 
                 topic = msg.topic()
-                # missing msg_type which means this topic is somehow malformed.
-                # if the consumer is in the relaxed mode, it will continue to the
-                # message, otherwise it will raise the exception
                 headers = msg.headers()
-                if not headers["msg_type"] or headers["msg_type"] is None:
+                msg_type_header = self.get_header_value(headers, "msg_type")
+                if not msg_type_header:
                     if self.relaxed:
-                        self.logger.warning(f"Missing message type for topic ${topic} in message ${msg}")
+                        self.logger.warning(f"Missing message type for topic {topic} in message {msg}")
                         self.consumer.commit(msg)
                         continue
                     raise MalformedMessageException.missing_message_type_header(topic, msg)
 
-                msg_type = _message_type_registry.get_message_type_from_name(topic, headers["msg_type"])
+                msg_type = _message_type_registry.get_message_type_from_name(topic, msg_type_header)
                 if msg_type is None:
                     if self.relaxed:
-                        self.logger.warning(f"Missing registered message type for topic ${topic} in message ${msg}")
+                        self.logger.warning(f"Missing registered message type for topic {topic} in message {msg}")
                         self.consumer.commit(msg)
                         continue
-                    raise UnknownMessageTypeException(topic, headers["msg_type"])
+                    raise UnknownMessageTypeException(topic, msg_type_header)
 
                 handler_cls_list: List[Type[KafkaMessageConsumer]] | None = _message_type_registry.get_handlers(topic, msg_type)
 
@@ -81,7 +81,7 @@ class KafkaConsumerManager:
                         self.logger.info(f"Kafka: No handler registered for topic: {topic}. Proceeding to the next message")
                         self.consumer.commit(msg)
                         continue
-                    raise MissingHandlerException(topic, headers["msg_type"])
+                    raise MissingHandlerException(topic, msg_type_header)
 
                 for handler_cls in handler_cls_list:
                     if handler_cls is None:
@@ -89,24 +89,25 @@ class KafkaConsumerManager:
                         continue
 
                     try:
-                        kafka_message: KafkaMessage = self._deserialize_message(msg.value(), msg_type)
+                        message_payload: Any = self.message_deserializer.deserialize(msg.value(), msg_type)
                     except Exception as e:
                         self.logger.error(f"Kafka: Unable to deserialize message: {msg.value()}")
                         raise e
 
                     try:
-                        # Resolve handler from  DI container
+                        # Resolve handler from Dependency Injection container
                         assert self.consumer_provider is not None  # nosec B101
                         handler = self.consumer_provider(handler_cls)
-                        handler.handle(kafka_message.payload)
+                        handler.handle(message_payload)
 
                         # ACK after success
                         self.consumer.commit(msg)
                     except Exception as e:
                         self.logger.error(f"Kafka: Failed to process message on topic {topic}: {e}")
+                        self.logger.exception("Exception details")  # Log the full exception details
 
         self.stop_event.clear()
-        self.threadHandle = threading.Thread(target=run, daemon=True)
+        self.threadHandle = threading.Thread(target=run, daemon=True, name="Kafka consumer thread")
         self.threadHandle.start()
 
     def stop(self) -> None:
