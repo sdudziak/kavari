@@ -123,9 +123,9 @@ async def lifespan(app: FastAPI):
 ## 🔍 Want to contribute?
 
 Contributions, issues and feature requests are welcome!  
-Feel free to check [issues page](https://github.com/szymon-dudziak/kavari/issues).
+Feel free to check [issues page](https://github.com/sdudziak/kavari/issues).
 
-If you love this project, leave a ⭐ on [GitHub](https://github.com/szymon-dudziak/kavari)!
+If you love this project, leave a ⭐ on [GitHub](https://github.com/sdudziak/kavari)!
 
 ---
 

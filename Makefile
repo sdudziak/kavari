@@ -9,7 +9,7 @@ install-dev:
 publish:
 	@if [ -d "dist" ]; then rm -rf dist; fi
 	poetry build
-	twine upload dist/*
+	twine upload --config-file=.pypirc dist/*
 
 # Sprawdzenie jakości kodu i bezpieczeństwa
 verify:
