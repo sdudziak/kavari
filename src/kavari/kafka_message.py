@@ -20,7 +20,8 @@ class KafkaMessage(ABC):
         """
         The message key in the produce method is important for determining how messages are
         distributed across partitions in a Kafka topic. By using a key, all messages with the same
-        key will go to the same partition, which helps maintain the order of messages that are related.
+        key will go to the same partition and kafka will ensure the order of them. Think about it in
+        terms of aggregate ID
 
         :return: str
         """

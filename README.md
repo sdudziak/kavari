@@ -1,29 +1,28 @@
-Kavari
----
-### Easy, automated Kafka publish/subscription with strong types
+# Kavari
+### Easy, automated Kafka publish/subscribe with strong typing
 
 ---
-This tool is to make usage of kafka super easy and safe, 
-utilizing best practices and power given by [`confluent_kafka`](https://github.com/confluentinc/confluent-kafka-python)
 
-While it may be fast & fun to use weak types in Python for rapid development, that when it comes to expose any data outside the app, 
-it is very reasonable to structure the message in predictable manner - providing stable contract of exposed data structure for external 
-consumers.
-Also, because modern applications usually are hosted in a cloud - there is a necessity to implement additional readiness for host 
-migration/failover scenarios, when pod manager can move host from one physical place to another. That results with specific situations when:
-* kafka might not achievable temporarily 
-* consumers might be taken down in the middle of processing a message(s)
-* rebalancing partitions
+This tool aims to make Kafka usage extremely simple and safe,  
+leveraging best practices and the power of [`confluent_kafka`](https://github.com/confluentinc/confluent-kafka-python).
 
-All of these adds a lot of code for the basic implementation for the final product.
+While using weak typing in Python may be quick and fun for rapid development, exposing any data outside your app requires a predictable and structured format. Providing a stable contract for external consumers ensures maintainability and safety.
 
-This small library covers these, additionally providing some simplicity flavor on top.
+Additionally, since modern applications are usually hosted in the cloud, there’s often a need to handle scenarios like host migration or failover. For instance:
 
-## Publishing message
+- Kafka may become temporarily unavailable  
+- Consumers may shut down in the middle of message processing  
+- Partition rebalancing may occur  
 
-Create a message type, that defines the payload (our strong typed message format)
+These situations typically require a lot of extra code in a production-ready setup.
+
+This small library handles those concerns for you — while also simplifying the developer experience.
+
+## 📨 Publishing messages
+
+Create a message type that defines the payload (our strongly typed message format):
+
 ```python
-
 class TestKafkaMessage(KafkaMessage):
     topic = "test_topic"
 
@@ -32,19 +31,28 @@ class TestKafkaMessage(KafkaMessage):
         self.payload: str = payload
 
     def get_partition_key(self) -> str:
+        """
+        The message key in the produce method is important for determining how messages are
+        distributed across partitions in a Kafka topic. By using a key, all messages with the same
+        key will go to the same partition and kafka will ensure the order of them. Think about it in 
+        terms of aggregate ID 
+
+        :return: str
+        """
         return "1"
 ```
 
-And then publish it on the topic, just by calling:
+Then publish it to the topic simply by calling:
+
 ```python
-msg: TestKafkaMessage = TestKafkaMessage("test_message")
-kafka_manager.publish_message(msg, lambda msg, ex:  print("Message published"))
+msg = TestKafkaMessage("test_message")
+kafka_manager.publish_message(msg, lambda msg, ex: print("Message published"))
 ```
-Easy? I hope so! Now let's consume this message
 
-## Consuming message
+## 📥 Consuming messages
 
-Define the handler class 
+Define the handler class:
+
 ```python
 @kafka_message_handler(message_cls=TestKafkaMessage)
 class TestKafkaMessageConsumer(KafkaMessageConsumer):
@@ -56,21 +64,17 @@ class TestKafkaMessageConsumer(KafkaMessageConsumer):
         self.received_message = message_data
 ```
 
-That's (almost) it! 
-Once consumer become available via provider (any DI for example) each message is handled out of the box in **separated thread**, to isolate
-background kafka messaging processing from other part of the application (e.g. REST API)
+Once the consumer is available via a provider (e.g. a DI container), each message will be handled **in a separate thread**,  
+which keeps Kafka background processing isolated from other parts of your app (e.g. REST API).
 
-I hope you like the concept!
+## ⚙️ Configuration
 
-To achieve full power of this lib, you need to configure it
+Install using:
 
-## Configuration
+- **pip**: `pip install kavari`  
+- **Poetry**: `poetry add kavari`
 
-Install it via:   
-* PIP: `pip install kavari`
-* Poetry: `poetry add kavari`
-
-Create a `kafka_manager` (example below is for a DI container, but you can use it without it)
+Create a `kafka_manager` (example below uses a DI container, but Kavari works without one as well):
 
 ```python
 from kavari import kavari_create, FibonacciRetryPolicy, KafkaManager
@@ -88,34 +92,43 @@ class Container(DeclarativeContainer):
     )
 ```
 
-There are 3 necessary steps to finish the configuration:
-1. Configure message consumers provider:   
-   Provider is a method that will deliver initialized instance of message consumer when specific key is given.   
-   The example manual consumer provider will look like follows:   
-   ```python
-    def consumer_provider(key: typing.Any) -> kavari.KafkaMessageConsumer:
-        if key == MyFirstMessageConsumer.__class__:
-            return MyFirstMessageConsumer()
-   ```
-   This interface is prepared to be compatible with `dependency_injector.Container.resolve` method.
-1. Start the message consumers loop when application starts.
-1. Stop the message consumers loop just before the application go down.
+### ✅ Configuration steps
 
-For instance (`FastAPI` + `dependency_injector`):
+1. **Configure the message consumer provider:**
+
 ```python
+def consumer_provider(key: typing.Any) -> kavari.KafkaMessageConsumer:
+    if key == MyFirstMessageConsumer.__class__:
+        return MyFirstMessageConsumer()
+```
 
+2. **Start the consumer loop** at application startup.  
+3. **Stop the consumer loop** during application shutdown.
+
+### Example (FastAPI + Dependency Injector)
+
+```python
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # this part is called on application start
-    container.logger().info("Initiating startup & background jobs")
-    # consumer provider is called to get particular type of the consumer, making 
-    # the autoresolve feature working out of the box
-    container.kafka_manager().set_consumer_provider(container.resolve) 
+    container.logger().info("Starting background jobs...")
+    container.kafka_manager().set_consumer_provider(container.resolve)
     container.kafka_manager().start_consumer_loop()
     yield
-    # this part is called when application is tearing down
-    container.logger().info("Stopping background jobs")
+    container.logger().info("Stopping background jobs...")
     container.kafka_manager().stop_consumer_loop()
 ```
 
 ---
+
+## 🔍 Want to contribute?
+
+Contributions, issues and feature requests are welcome!  
+Feel free to check [issues page](https://github.com/szymon-dudziak/kavari/issues).
+
+If you love this project, leave a ⭐ on [GitHub](https://github.com/szymon-dudziak/kavari)!
+
+---
+
+## 📃 License
+
+This project is licensed under the [Apache 2.0 License](https://opensource.org/licenses/Apache-2.0).
